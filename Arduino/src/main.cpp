@@ -1,63 +1,64 @@
 #include <Arduino_GFX_Library.h>
 
-#define TFT_CS   10
-#define TFT_DC    9
-#define TFT_RST   8
+// Pins for LilyGO T-Display S3 (Right Header)
+#define SCK_PIN 18
+#define MOSI_PIN 17
+#define MISO_PIN -1
+#define CS_PIN 43
+#define DC_PIN 16
+#define RST_PIN 21
 
-Arduino_DataBus *bus = new Arduino_HWSPI(TFT_DC, TFT_CS);
-Arduino_GFX *gfx = new Arduino_GC9A01(bus, TFT_RST, 0, true);
+// Use the standard HWSPI for maximum compatibility
+Arduino_DataBus *bus = new Arduino_HWSPI(DC_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN);
+Arduino_GFX *gfx = new Arduino_GC9A01(bus, RST_PIN, 0, true);
 
-// 80x80 Canvas (approx 12.8KB RAM - safe for UNO R4)
-// A larger canvas allows the iris to move inside it without needing external repair
-Arduino_Canvas *canvas = new Arduino_Canvas(80, 80, gfx);
+// Full screen 240x240 canvas
+Arduino_Canvas *canvas = new Arduino_Canvas(240, 240, gfx);
 
-int16_t curX = 80, curY = 80;
-int16_t targetX = 80, targetY = 80;
+int16_t blinkH = 0;
+bool isBlinking = false;
+float scannerPos = 0;
 
 void setup() {
   gfx->begin();
-  gfx->fillScreen(RGB565_BLACK);
-
-  // Static background: White eye socket
-  gfx->fillCircle(120, 120, 110, RGB565_WHITE);
-
   canvas->begin();
+  gfx->fillScreen(RGB565_BLACK);
 }
 
-void drawSmoothEye(int16_t x, int16_t y) {
-  // --- EVERYTHING HAPPENS ON THE CANVAS FIRST ---
-  // This clears the canvas to white (no flickering on main screen)
-  canvas->fillScreen(RGB565_WHITE);
+void drawThinkingEye() {
+  canvas->fillScreen(RGB565_BLACK);
 
-  // Draw iris/pupil in the center of the 80x80 canvas
-  // We use 40,40 as the center of our 80x80 box
-  canvas->fillCircle(40, 40, 30, RGB565_BLUE);   // Iris
-  canvas->fillCircle(40, 40, 14, RGB565_BLACK);  // Pupil
-  canvas->fillCircle(30, 30, 6, RGB565_WHITE);   // Glint
+  // 1. Large Circular Boundary (Glowing)
+  canvas->drawCircle(120, 120, 118, 0x07E0); // Green
 
-  // --- ONE SINGLE PUSH TO SCREEN ---
-  // We push the whole 80x80 block.
-  // Because the background of the canvas is white, it naturally
-  // "erases" the previous iris position as it moves.
-  gfx->draw16bitRGBBitmap(x, y, (uint16_t*)canvas->getFramebuffer(), 80, 80);
+  // 2. The "Scanner" Line (Thinking animation)
+  scannerPos += 0.05;
+  int scanY = 120 + (sin(scannerPos) * 110);
+  canvas->drawFastHLine(10, scanY, 220, 0x07E0);
+
+  // 3. Central Iris (Cyber Style)
+  canvas->drawCircle(120, 120, 60, 0x07E0);
+  canvas->fillCircle(120, 120, 15, 0x07E0); // Pupil
+
+  // 4. Eyelid / Blink Logic
+  if (!isBlinking && random(100) > 98) isBlinking = true;
+
+  if (isBlinking) {
+    blinkH += 12;
+    if (blinkH >= 120) isBlinking = false;
+  } else if (blinkH > 0) {
+    blinkH -= 12;
+  }
+
+  if (blinkH > 0) {
+    canvas->fillRect(0, 0, 240, blinkH, RGB565_BLACK);
+    canvas->fillRect(0, 240 - blinkH, 240, 240, RGB565_BLACK);
+  }
+
+  // 5. Final Push
+  canvas->flush();
 }
 
 void loop() {
-  // Move toward target
-  if (curX < targetX) curX++;
-  else if (curX > targetX) curX--;
-
-  if (curY < targetY) curY++;
-  else if (curY > targetY) curY--;
-
-  drawSmoothEye(curX, curY);
-
-  if (curX == targetX && curY == targetY) {
-    delay(random(500, 1500));
-    // Set target so the 80x80 box stays within the 240x240 screen
-    targetX = random(40, 120);
-    targetY = random(40, 120);
-  }
-
-  delay(2); // Faster delay for smoother motion
+  drawThinkingEye();
 }
