@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -8,14 +9,24 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-keyboard = [["😇 Lieb sein", "😈 Böse sein"]]
+logger = logging.getLogger(__name__)
+
+# Keyboard with 4 mood options
+keyboard = [
+    ["😊 Happy", "😘 Flirty"],
+    ["😠 Angry", "😑 Bored"]
+]
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-def write_mood(new_mood):
-    with open("mood.txt", "w+") as file:
-        file.write(new_mood)
+# Global callback for mood updates
+mood_callback = None
 
-## ANDI - TELEGRAM BOT
+
+def set_mood_callback(callback):
+    """Set the callback function for mood updates."""
+    global mood_callback
+    mood_callback = callback
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Startet den Bot und zeigt das Keyboard an."""
@@ -24,29 +35,56 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Verarbeitet die Klicks auf das Custom Keyboard."""
-    global current_mode
     text = update.message.text
+    mood = None
 
-    if "😇" in text:
-        write_mood("good")
-        await update.message.reply_text("Modus gewechselt: Ich bin jetzt charmant! ✨")
-    elif "😈" in text:
-        write_mood("bad")
-        await update.message.reply_text("Modus gewechselt: Mach dich auf was gefasst! 💀")
+    if "😊" in text:
+        mood = "happy"
+        emoji_response = "😊"
+        message = "Modus gewechselt: Ich bin jetzt fröhlich und herzlich! ✨"
+    elif "😘" in text:
+        mood = "flirty"
+        emoji_response = "😘"
+        message = "Modus gewechselt: Ich bin jetzt charmant und flirtend! 💋"
+    elif "😠" in text:
+        mood = "angry"
+        emoji_response = "😠"
+        message = "Modus gewechselt: Mach dich auf was gefasst! 💀"
+    elif "😑" in text:
+        mood = "bored"
+        emoji_response = "😑"
+        message = "Modus gewechselt: Ich bin jetzt gelangweilt... 😏"
     else:
         await update.message.reply_text("Bitte benutze die Tasten unten, um den Modus zu wählen.")
+        return
 
-def main():
-    """Startet den Bot."""
+    # Call the mood update callback if set
+    if mood_callback:
+        mood_callback(mood)
+    
+    await update.message.reply_text(f"{emoji_response} {message}")
+    logger.info(f"Mood changed to: {mood}")
+
+
+async def start_telegram_bot(callback):
+    """Startet den Bot mit mood callback."""
+    set_mood_callback(callback)
+    
     application = Application.builder().token(BOT_TOKEN).build()
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("ANDI Bot läuft...")
-    application.run_polling()
+    logger.info("ANDI Bot is running...")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+
 
 if __name__ == "__main__":
-    main()
+    # For standalone testing
+    logging.basicConfig(level=logging.INFO)
+    import asyncio
+    asyncio.run(start_telegram_bot(lambda mood: print(f"Mood: {mood}")))
