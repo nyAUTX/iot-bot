@@ -73,7 +73,7 @@ class AudioHandler:
                     "bitrate": 128000,
                     "channel": "mono",
                     "emotion": voice_config["emotion"],
-                    "voice_id": voice_config["voice_id"],
+                    "voice_id": "Deep_Voice_Man",
                     "sample_rate": 32000,
                     "audio_format": "mp3",
                     "language_boost": "German",
