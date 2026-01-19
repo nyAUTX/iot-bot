@@ -27,6 +27,7 @@ htmlcov/
 .venv
 env/
 venv/
+trash-talkie/
 .ipynb_checkpoints
 .mypy_cache/
 .ruff_cache/
