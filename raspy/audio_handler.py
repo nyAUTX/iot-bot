@@ -131,6 +131,11 @@ class AudioHandler:
         file_size = Path(audio_path).stat().st_size
         logger.info(f"Playing audio: {audio_path} ({file_size} bytes)")
         
+        # Verify file is not empty or corrupt
+        if file_size < 1000:
+            logger.error(f"Audio file is too small ({file_size} bytes), likely corrupt")
+            return False
+        
         try:
             import platform
             system = platform.system()
@@ -145,22 +150,31 @@ class AudioHandler:
                 else:
                     logger.error(f"afplay failed with return code {result.returncode}")
             
-            # Linux
+            # Linux (including Raspberry Pi)
             elif system == "Linux":
-                players = [("mpg123", ["mpg123", audio_path]),
-                          ("ffplay", ["ffplay", "-nodisp", "-autoexit", audio_path]),
-                          ("aplay", ["aplay", audio_path]),
-                          ("paplay", ["paplay", audio_path])]
+                # Prioritize players that work well with Bluetooth speakers
+                players = [
+                    ("play (sox)", ["play", audio_path]),  # Your tested solution
+                    ("mpg123", ["mpg123", "-q", audio_path]),  # Good MP3 support with ALSA
+                    ("mpg321", ["mpg321", "-q", audio_path]),  # Alternative MP3 player
+                    ("cvlc", ["cvlc", "--play-and-exit", audio_path]),  # VLC without GUI
+                    ("ffplay", ["ffplay", "-nodisp", "-autoexit", audio_path]),
+                    ("paplay", ["paplay", audio_path])  # PulseAudio
+                ]
                 
                 for player_name, cmd in players:
                     try:
                         logger.info(f"Trying {player_name}...")
                         result = subprocess.run(cmd, check=False,
-                                              stdout=subprocess.DEVNULL,
-                                              stderr=subprocess.DEVNULL)
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE)
                         if result.returncode == 0:
                             logger.info(f"Audio playback finished successfully with {player_name}")
                             return True
+                        else:
+                            logger.debug(f"{player_name} returned code {result.returncode}")
+                            if result.stderr:
+                                logger.debug(f"{player_name} stderr: {result.stderr.decode()[:200]}")
                     except FileNotFoundError:
                         logger.debug(f"{player_name} not found")
                         continue
