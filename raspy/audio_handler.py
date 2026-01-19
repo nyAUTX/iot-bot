@@ -5,33 +5,33 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import replicate
+import requests
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# Single voice used for all moods
+SINGLE_VOICE = "German_PlayfulMan"
+
 MOOD_VOICES = {
     "happy": {
         "emotion": "happy",
-        "voice_id": "Bright_Male",
         "pitch": 0,
         "speed": 1,
     },
     "flirty": {
         "emotion": "excited",
-        "voice_id": "Deep_Voice_Woman",
         "pitch": 2,
         "speed": 0.9,
     },
     "angry": {
         "emotion": "angry",
-        "voice_id": "Deep_Voice_Man",
         "pitch": -2,
         "speed": 1.2,
     },
     "bored": {
         "emotion": "sad",
-        "voice_id": "Calm_Male",
         "pitch": 0,
         "speed": 0.8,
     }
@@ -61,6 +61,8 @@ class AudioHandler:
             voice_config = MOOD_VOICES.get(mood, MOOD_VOICES["happy"])
             
             logger.info(f"Generating audio with mood: {mood}")
+            logger.info(f"Voice: {SINGLE_VOICE}, Emotion: {voice_config['emotion']}")
+            logger.info(f"Pitch: {voice_config['pitch']}, Speed: {voice_config['speed']}")
             logger.info(f"Text: {text[:100]}...")
             
             output = replicate.run(
@@ -73,7 +75,7 @@ class AudioHandler:
                     "bitrate": 128000,
                     "channel": "mono",
                     "emotion": voice_config["emotion"],
-                    "voice_id": "Deep_Voice_Man",
+                    "voice_id": SINGLE_VOICE,
                     "sample_rate": 32000,
                     "audio_format": "mp3",
                     "language_boost": "German",
@@ -87,15 +89,27 @@ class AudioHandler:
             
             # Save audio file
             audio_path = f"audio/audio_{timestamp}.mp3"
-            with open(audio_path, "wb") as f:
-                if hasattr(output, 'read'):
-                    f.write(output.read())
-                else:
-                    # If output is a URL string
-                    import urllib.request
-                    urllib.request.urlretrieve(str(output), audio_path)
             
-            logger.info(f"Audio generated: {audio_path}")
+            # Handle the output - Replicate returns a URL string
+            if isinstance(output, str):
+                logger.info(f"Downloading audio from Replicate...")
+                response = requests.get(output, timeout=30)
+                response.raise_for_status()
+                
+                with open(audio_path, "wb") as f:
+                    f.write(response.content)
+                    
+                file_size = Path(audio_path).stat().st_size
+                logger.info(f"Audio file downloaded: {audio_path} ({file_size} bytes, 128kbps @ 32kHz)")
+            else:
+                # Fallback: if it's a file-like object
+                logger.warning("Output is not a URL, attempting direct write")
+                with open(audio_path, "wb") as f:
+                    if hasattr(output, 'read'):
+                        f.write(output.read())
+                    else:
+                        f.write(output)
+            
             return audio_path
         
         except Exception as e:
@@ -112,32 +126,56 @@ class AudioHandler:
         """
         if not Path(audio_path).exists():
             logger.error(f"Audio file not found: {audio_path}")
-            return
+            return False
+        
+        file_size = Path(audio_path).stat().st_size
+        logger.info(f"Playing audio: {audio_path} ({file_size} bytes)")
         
         try:
-            logger.info(f"Playing audio: {audio_path}")
+            import platform
+            system = platform.system()
             
-            # Try different players based on OS
-            try:
-                # macOS
-                subprocess.run(["afplay", audio_path], check=True)
-            except (FileNotFoundError, subprocess.CalledProcessError):
-                try:
-                    # Linux
-                    subprocess.run(["mpg123", audio_path], check=True)
-                except FileNotFoundError:
+            # macOS
+            if system == "Darwin":
+                logger.info("Using afplay (macOS)")
+                result = subprocess.run(["afplay", audio_path], check=False)
+                if result.returncode == 0:
+                    logger.info("Audio playback finished successfully")
+                    return True
+                else:
+                    logger.error(f"afplay failed with return code {result.returncode}")
+            
+            # Linux
+            elif system == "Linux":
+                players = [("mpg123", ["mpg123", audio_path]),
+                          ("ffplay", ["ffplay", "-nodisp", "-autoexit", audio_path]),
+                          ("aplay", ["aplay", audio_path]),
+                          ("paplay", ["paplay", audio_path])]
+                
+                for player_name, cmd in players:
                     try:
-                        # Linux alternative
-                        subprocess.run(["aplay", audio_path], check=True)
+                        logger.info(f"Trying {player_name}...")
+                        result = subprocess.run(cmd, check=False,
+                                              stdout=subprocess.DEVNULL,
+                                              stderr=subprocess.DEVNULL)
+                        if result.returncode == 0:
+                            logger.info(f"Audio playback finished successfully with {player_name}")
+                            return True
                     except FileNotFoundError:
-                        try:
-                            # Windows
-                            import winsound
-                            winsound.PlaySound(audio_path, winsound.SND_FILENAME)
-                        except (ImportError, Exception):
-                            logger.warning("No audio player found. Audio generated but not played.")
+                        logger.debug(f"{player_name} not found")
+                        continue
             
-            logger.info("Audio playback finished")
+            # Windows
+            elif system == "Windows":
+                import winsound
+                logger.info("Using winsound (Windows)")
+                winsound.PlaySound(audio_path, winsound.SND_FILENAME)
+                logger.info("Audio playback finished successfully")
+                return True
+            
+            logger.warning("Could not play audio with any available player")
+            return False
         
         except Exception as e:
-            logger.error(f"Error playing audio: {e}")
+            logger.error(f"Error playing audio: {e}", exc_info=True)
+            return False

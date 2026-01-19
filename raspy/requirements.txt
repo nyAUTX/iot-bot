@@ -5,3 +5,4 @@ python-dotenv==1.0.0
 python-telegram-bot==22.5
 replicate==0.20.0
 RPi.GPIO==0.7.1a4
+requests>=2.31.0
