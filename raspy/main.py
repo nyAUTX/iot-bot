@@ -6,8 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Import modules
-from bot import start_telegram_bot
+# Import modules (removed bot import)
 from sensor_controller import SensorController
 from image_analyzer import ImageAnalyzer
 from serial_handler import SerialHandler
@@ -26,6 +25,20 @@ load_dotenv()
 # Global state
 current_mood = "happy"
 mood_lock = threading.Lock()
+mood_file_path = "mood.txt"
+
+
+def read_mood_from_file():
+    """Read current mood from mood.txt file."""
+    try:
+        if Path(mood_file_path).exists():
+            with open(mood_file_path, "r") as f:
+                mood = f.read().strip()
+                if mood in ["happy", "flirty", "angry", "bored"]:
+                    return mood
+    except Exception as e:
+        logger.error(f"Error reading mood file: {e}")
+    return "happy"  # default
 
 
 def set_mood(new_mood):
@@ -117,6 +130,32 @@ async def sensor_loop():
         sensor_controller.cleanup()
 
 
+async def mood_watcher_loop():
+    """Watch mood.txt file for changes and update mood."""
+    logger.info("Starting mood file watcher...")
+    last_modified = None
+    
+    try:
+        while True:
+            try:
+                if Path(mood_file_path).exists():
+                    current_modified = Path(mood_file_path).stat().st_mtime
+                    
+                    # Check if file was modified
+                    if last_modified is None or current_modified != last_modified:
+                        last_modified = current_modified
+                        new_mood = read_mood_from_file()
+                        set_mood(new_mood)
+                        
+            except Exception as e:
+                logger.error(f"Error in mood watcher: {e}")
+            
+            await asyncio.sleep(0.5)  # Check every 500ms
+            
+    except Exception as e:
+        logger.error(f"Error in mood watcher loop: {e}", exc_info=True)
+
+
 async def serial_receive_loop():
     """Listen for serial messages (if device sends data)."""
     logger.info("Starting serial receive loop...")
@@ -139,21 +178,25 @@ async def main():
     # Initialize
     initialize_directories()
     
-    # Start components
-    logger.info("Initializing components...")
+    # Create mood.txt if it doesn't exist
+    if not Path(mood_file_path).exists():
+        with open(mood_file_path, "w") as f:
+            f.write("happy")
+        logger.info("Created mood.txt with default mood: happy")
     
-    # Start Telegram bot in the same event loop
-    bot_app = await start_telegram_bot(set_mood)
-    if bot_app is None:
-        logger.error("Bot konnte nicht gestartet werden")
-    else:
-        logger.info("Telegram bot started")
+    # Read initial mood from file
+    initial_mood = read_mood_from_file()
+    set_mood(initial_mood)
+    
+    logger.info("System ready. Start bot.py separately to control mood.")
+    logger.info("Watching mood.txt for changes...")
     
     # Run async loops
     try:
         await asyncio.gather(
             sensor_loop(),
-            serial_receive_loop()
+            serial_receive_loop(),
+            mood_watcher_loop()  # Watch mood file
         )
     except KeyboardInterrupt:
         logger.info("System shutdown requested")
@@ -162,14 +205,6 @@ async def main():
     finally:
         logger.info("ANDI System shutting down...")
         sensor_controller.cleanup()
-        # Stop bot cleanly
-        try:
-            if 'bot_app' in locals() and bot_app:
-                await bot_app.updater.stop()
-                await bot_app.stop()
-                await bot_app.shutdown()
-        except Exception as e:
-            logger.error(f"Error shutting down bot: {e}", exc_info=True)
 
 
 if __name__ == "__main__":

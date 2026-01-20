@@ -5,28 +5,35 @@ A fully integrated IoT system that uses a Telegram bot to control mood-based fas
 ## System Architecture
 
 ```
-Telegram Bot (mood selection)
+Telegram Bot (bot.py) ──writes──> mood.txt
+                                      ↓
+Main System (main.py) ──watches──> mood.txt ──reads mood
         ↓
-    Mood State
-        ↓ ├─→ Serial Communication (send mood to device)
-        ├─→ Sensor Monitoring (ultrasound distance)
-            ↓
-        Sensor Triggered (< 5cm)
-            ↓
-        LED Warning Sequence
-            ↓
-        Take Photo
-            ↓
-        Archive Photo (if exists)
-            ↓
-        LLM Analysis (mood-based)
-            ↓
-        Generate Audio (Replicate TTS)
-            ↓
-        Archive Audio (if exists)
-            ↓
-        Play Audio
+    Serial Communication (send mood to device)
+        ↓
+    Sensor Monitoring (ultrasound distance)
+        ↓
+    Sensor Triggered (< 5cm)
+        ↓
+    LED Warning Sequence
+        ↓
+    Take Photo
+        ↓
+    Archive Photo (if exists)
+        ↓
+    LLM Analysis (mood-based)
+        ↓
+    Generate Audio (Replicate TTS)
+        ↓
+    Archive Audio (if exists)
+        ↓
+    Play Audio
 ```
+
+**Two separate processes:**
+
+1. **bot.py** - Telegram bot that writes mood to mood.txt
+2. **main.py** - Main system that watches mood.txt and handles sensors/camera/audio
 
 ## Components
 

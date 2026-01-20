@@ -18,14 +18,12 @@ keyboard = [
 ]
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-# Global callback for mood updates
-mood_callback = None
 
-
-def set_mood_callback(callback):
-    """Set the callback function for mood updates."""
-    global mood_callback
-    mood_callback = callback
+def write_mood(new_mood):
+    """Write mood to file for other processes to read."""
+    with open("mood.txt", "w") as file:
+        file.write(new_mood)
+    logger.info(f"Mood written to mood.txt: {new_mood}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -61,38 +59,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Bitte benutze die Tasten unten, um den Modus zu wählen.")
         return
 
-    # Call the mood update callback if set
-    if mood_callback:
-        mood_callback(mood)
+    # Write mood to file
+    write_mood(mood)
     
     await update.message.reply_text(f"{emoji_response} {message}")
     logger.info(f"Mood changed to: {mood}")
 
 
-async def start_telegram_bot(callback):
-    """Startet den Bot mit mood callback."""
-    set_mood_callback(callback)
-    
+def main():
+    """Startet den Bot standalone."""
     if not BOT_TOKEN:
-        logger.error("TELEGRAM_TOKEN fehlt in der .env – Bot kann nicht gestartet werden")
-        return None
-
+        logger.error("TELEGRAM_TOKEN not found in .env file")
+        return
+    
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("ANDI Bot is running... starting polling")
-    # Für eingebettete Nutzung im bestehenden Event-Loop: manuell initialisieren/starten/pollen
-    await application.initialize()
-    # Drop alte Updates, falls vorhanden
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.start()
-    await application.updater.start_polling()
-    return application
+    logger.info("ANDI Bot läuft... (standalone mode)")
+    application.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
-    # For standalone testing
     logging.basicConfig(level=logging.INFO)
-    import asyncio
-    asyncio.run(start_telegram_bot(lambda mood: print(f"Mood: {mood}")))
+    main()
