@@ -168,7 +168,7 @@ class SensorController:
             self.camera.capture_file(filename)
             logger.info(f"Photo saved: {filename}")
             # Turn LED white after photo is taken
-            self.set_color(1, 1, 1)   # White (R=on, G=on, B=on)
+            self.set_color(0, 0, 0)   # White (R=on, G=on, B=on)
             return filename
         except Exception as e:
             logger.error(f"Error taking photo: {e}")
@@ -179,7 +179,7 @@ class SensorController:
         logger.info("Cleaning up hardware resources")
         try:
             if RASPBERRY_PI:
-                self.set_color(0, 0, 0)
+                self.set_color(1, 1, 1)
                 if self.camera:
                     self.camera.stop()
                     self.camera.close()
