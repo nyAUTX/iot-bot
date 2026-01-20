@@ -143,7 +143,7 @@ class SensorController:
             # End with red for 1 second
             self.set_color(0, 0, 1)   # Red
             time.sleep(0.5)
-            self.set_color(0, 0, 0)   # Off
+            self.set_color(1, 1, 1)   # Off
         except Exception as e:
             logger.error(f"Error in warning sequence: {e}")
     
