@@ -112,11 +112,11 @@ void loop() {
     msg.trim(); // Remove whitespace or \r
     Serial.println("Command Received: " + msg);
 
-    if (msg == "happy")        emotionHappy();
-    else if (msg == "angry")   emotionAngry();
-    else if (msg == "flirty")  emotionFlirty();
-    else if (msg == "bored")   emotionBored();
-    else if (msg == "neutral") emotionNeutral();
+    if (msg == "MOOD:happy")        emotionHappy();
+    else if (msg == "MOOD:angry")   emotionAngry();
+    else if (msg == "MOOD:flirty")  emotionFlirty();
+    else if (msg == "MOOD:bored")   emotionBored();
+    else if (msg == "MOOD:neutral") emotionNeutral();
   }
 
   // 2. Render the eye
