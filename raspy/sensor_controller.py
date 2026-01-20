@@ -33,7 +33,15 @@ class SensorController:
     def _init_hardware(self):
         """Initialize GPIO and camera."""
         try:
-            GPIO.setmode(GPIO.BCM)
+            # Set GPIO warnings to false to avoid noise
+            GPIO.setwarnings(False)
+            
+            # Check if GPIO mode is already set, if not set it
+            try:
+                GPIO.setmode(GPIO.BCM)
+            except ValueError:
+                # Mode already set, that's fine
+                pass
             
             # Ultrasonic pins
             GPIO.setup(self.TRIG, GPIO.OUT)
@@ -102,18 +110,40 @@ class SensorController:
             return -1
     
     def warning_sequence(self):
-        """LED warning sequence (~5 seconds total)."""
+        """LED warning sequence with increasing speed, ending in red."""
         logger.info("LED warning sequence started")
         try:
-            for _ in range(5):
+            # First cycle - normal speed
+            for _ in range(2):
                 self.set_color(0, 1, 0)   # Green
-                time.sleep(0.3)
+                time.sleep(0.2)
                 self.set_color(1, 1, 0)   # Yellow
-                time.sleep(0.3)
+                time.sleep(0.2)
                 self.set_color(1, 0, 0)   # Red
-                time.sleep(0.3)
-                self.set_color(0, 0, 0)   # Off
+                time.sleep(0.2)
+            
+            # Second cycle - faster
+            for _ in range(2):
+                self.set_color(0, 1, 0)   # Green
                 time.sleep(0.1)
+                self.set_color(1, 1, 0)   # Yellow
+                time.sleep(0.1)
+                self.set_color(1, 0, 0)   # Red
+                time.sleep(0.1)
+            
+            # Third cycle - very fast
+            for _ in range(3):
+                self.set_color(0, 1, 0)   # Green
+                time.sleep(0.05)
+                self.set_color(1, 1, 0)   # Yellow
+                time.sleep(0.05)
+                self.set_color(1, 0, 0)   # Red
+                time.sleep(0.05)
+            
+            # End with red for 1 second
+            self.set_color(1, 0, 0)   # Red
+            time.sleep(0.5)
+            self.set_color(0, 0, 0)   # Off
         except Exception as e:
             logger.error(f"Error in warning sequence: {e}")
     
@@ -150,6 +180,12 @@ class SensorController:
                 self.set_color(0, 0, 0)
                 if self.camera:
                     self.camera.stop()
-                GPIO.cleanup()
+                    self.camera.close()
+                # Only cleanup if pins were actually set up
+                try:
+                    GPIO.cleanup()
+                except RuntimeWarning:
+                    # Ignore warning if nothing to cleanup
+                    pass
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
