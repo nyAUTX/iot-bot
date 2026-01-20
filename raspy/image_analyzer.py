@@ -56,7 +56,7 @@ class ImageAnalyzer:
             logger.info(f"Sending image to OpenAI for analysis with mood: {mood}")
             
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-nano",
                 messages=[
                     {
                         "role": "user",
