@@ -137,7 +137,7 @@ class SensorController:
                 time.sleep(0.05)
                 self.set_color(1, 1, 0)   # Yellow
                 time.sleep(0.05)
-                self.set_color(1, 0, 0)   # Red
+                self.set_color(0, 1, 0)   # Red
                 time.sleep(0.05)
             
             # End with red for 1 second
