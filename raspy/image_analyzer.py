@@ -58,10 +58,10 @@ class ImageAnalyzer:
             response = client.chat.completions.create(
                 model="gpt-4.1-nano",
                 messages=[
-                    {
-            "role": "developer",
-            "content": "Sprich wie ein übertrieben homosexueller affektierter Modeschöpfer aus Paris"
-        },
+        #             {
+        #     "role": "developer",
+        #     "content": "Sprich wie ein übertrieben homosexueller affektierter Modeschöpfer aus Paris"
+        # },
                     {
                         "role": "user",
                         "content": [
