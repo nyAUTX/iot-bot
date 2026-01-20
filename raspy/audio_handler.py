@@ -12,7 +12,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Single voice used for all moods
-SINGLE_VOICE = "German_PlayfulMan"
+SINGLE_VOICE = "Deep_Voice_Man"
 
 MOOD_VOICES = {
     "happy": {
@@ -22,12 +22,12 @@ MOOD_VOICES = {
     },
     "flirty": {
         "emotion": "surprised",
-        "pitch": 2,
+        "pitch": 0,
         "speed": 0.9,
     },
     "angry": {
         "emotion": "disgusted",
-        "pitch": -2,
+        "pitch": 0,
         "speed": 1.2,
     },
     "bored": {
