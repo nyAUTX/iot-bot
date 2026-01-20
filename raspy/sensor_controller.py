@@ -141,7 +141,7 @@ class SensorController:
                 time.sleep(0.05)
             
             # End with red for 1 second
-            self.set_color(1, 0, 0)   # Red
+            self.set_color(0, 0, 1)   # Red
             time.sleep(0.5)
             self.set_color(0, 0, 0)   # Off
         except Exception as e:
@@ -167,6 +167,8 @@ class SensorController:
             filename = f"photos/photo_{timestamp}.jpg"
             self.camera.capture_file(filename)
             logger.info(f"Photo saved: {filename}")
+            # Turn LED white after photo is taken
+            self.set_color(1, 1, 1)   # White (R=on, G=on, B=on)
             return filename
         except Exception as e:
             logger.error(f"Error taking photo: {e}")
