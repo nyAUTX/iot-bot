@@ -86,10 +86,15 @@ class SerialHandler:
         
         try:
             if self.ser.in_waiting:
-                message = self.ser.readline().decode().strip()
+                # Use 'ignore' or 'replace' to handle non-UTF-8 bytes gracefully
+                raw_data = self.ser.readline()
+                message = raw_data.decode('utf-8', errors='ignore').strip()
                 if message:
                     logger.debug(f"Received from serial: {message}")
                     return message
+        except UnicodeDecodeError as e:
+            # This should not happen anymore with errors='ignore', but just in case
+            logger.debug(f"Non-UTF-8 data received from serial, ignoring: {e}")
         except Exception as e:
             logger.error(f"Error reading from serial: {e}")
         

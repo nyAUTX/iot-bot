@@ -156,19 +156,6 @@ async def mood_watcher_loop():
         logger.error(f"Error in mood watcher loop: {e}", exc_info=True)
 
 
-async def serial_receive_loop():
-    """Listen for serial messages (if device sends data)."""
-    logger.info("Starting serial receive loop...")
-    try:
-        while True:
-            message = serial_handler.read_message()
-            if message:
-                logger.info(f"Received from device: {message}")
-            await asyncio.sleep(0.5)
-    except Exception as e:
-        logger.error(f"Error in serial loop: {e}", exc_info=True)
-
-
 async def main():
     """Main async orchestrator."""
     logger.info("=" * 50)
@@ -195,8 +182,7 @@ async def main():
     try:
         await asyncio.gather(
             sensor_loop(),
-            serial_receive_loop(),
-            mood_watcher_loop()  # Watch mood file
+            mood_watcher_loop()  # Watch mood file and send over serial
         )
     except KeyboardInterrupt:
         logger.info("System shutdown requested")

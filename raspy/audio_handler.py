@@ -21,12 +21,12 @@ MOOD_VOICES = {
         "speed": 1,
     },
     "flirty": {
-        "emotion": "excited",
+        "emotion": "surprised",
         "pitch": 2,
         "speed": 0.9,
     },
     "angry": {
-        "emotion": "angry",
+        "emotion": "disgusted",
         "pitch": -2,
         "speed": 1.2,
     },
