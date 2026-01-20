@@ -81,9 +81,12 @@ async def start_telegram_bot(callback):
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("ANDI Bot is running... starting polling")
-    # run_polling (PTB 20+) übernimmt init/start/poll/idle/stop
-    await application.run_polling(drop_pending_updates=True)
+    logger.info("ANDI Bot is running... starting polling (no signal handlers)")
+    # In Thread: disable signal handlers to avoid set_wakeup_fd errors
+    await application.run_polling(
+        drop_pending_updates=True,
+        stop_signals=None  # don't register signal handlers in non-main thread
+    )
 
 
 if __name__ == "__main__":
