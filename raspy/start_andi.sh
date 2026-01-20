@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ANDI IoT System Startup Script
-# Starts both the Telegram bot and the main system
+# Starts Bluetooth, Telegram bot, and the main system
 
 echo "Starting ANDI IoT System..."
 echo "=============================="
@@ -18,6 +18,14 @@ if [ ! -f ".env" ]; then
     echo "Please create .env file with your API keys"
     exit 1
 fi
+
+# --- Bluetooth Connection Section ---
+echo "Connecting to Bluetooth device (04:CB:88:AC:1D:FA)..."
+# Using echo -e to pipe the command into bluetoothctl
+echo -e "connect 04:CB:88:AC:1D:FA\nquit" | bluetoothctl
+sleep 3 # Brief pause to allow connection to stabilize
+echo "✓ Bluetooth sequence complete"
+# ------------------------------------
 
 echo ""
 echo "Starting Telegram bot in background..."
