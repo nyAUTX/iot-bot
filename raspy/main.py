@@ -85,12 +85,14 @@ async def sensor_loop():
                 # Warning LED sequence (runs in sync - 5 seconds)
                 led_start = datetime.now()
                 sensor_controller.warning_sequence()
-                logger.debug(f"LED sequence took: {(datetime.now() - led_start).total_seconds():.2f}s")
+                led_time = (datetime.now() - led_start).total_seconds()
+                logger.debug(f"LED sequence took: {led_time:.2f}s")
                 
                 # Take photo
                 photo_start = datetime.now()
                 photo_path = sensor_controller.take_photo(timestamp)
-                logger.info(f"Photo captured in {(datetime.now() - photo_start).total_seconds():.2f}s: {photo_path}")
+                photo_time = (datetime.now() - photo_start).total_seconds()
+                logger.info(f"Photo captured in {photo_time:.2f}s: {photo_path}")
                 
                 # Archive existing photo if it exists (async file operation)
                 if Path("photo.jpg").exists():
@@ -108,16 +110,17 @@ async def sensor_loop():
                 llm_start = datetime.now()
                 logger.info(f"Analyzing image with mood: {mood}...")
                 response_text = image_analyzer.analyze_image("photo.jpg", mood)
-                logger.info(f"LLM analysis took {(datetime.now() - llm_start).total_seconds():.2f}s")
+                text_generation_time = (datetime.now() - llm_start).total_seconds()
                 logger.info(f"Response: {response_text}")
                 
                 # Generate audio (also slow - 3-10 seconds via Replicate API)
                 audio_start = datetime.now()
                 logger.info(f"Generating audio...")
                 audio_path = audio_handler.generate_audio(response_text, mood, timestamp)
+                audio_generation_time = (datetime.now() - audio_start).total_seconds()
                 
                 if audio_path:
-                    logger.info(f"Audio generation took {(datetime.now() - audio_start).total_seconds():.2f}s")
+                    logger.info(f"Audio generated successfully")
                     
                     # Archive existing audio if it exists
                     if Path("audio.mp3").exists():
@@ -128,12 +131,22 @@ async def sensor_loop():
                     
                     play_start = datetime.now()
                     audio_handler.play_audio("audio.mp3")
-                    logger.info(f"Audio playback took {(datetime.now() - play_start).total_seconds():.2f}s")
+                    play_time = (datetime.now() - play_start).total_seconds()
+                    logger.debug(f"Audio playback took {play_time:.2f}s")
                 else:
                     logger.error("Audio generation failed")
                 
                 total_time = (datetime.now() - start_time).total_seconds()
-                logger.info(f"✓ Total process time: {total_time:.2f}s")
+                
+                # Print detailed timing breakdown
+                logger.info("=" * 60)
+                logger.info("PERFORMANCE REPORT:")
+                logger.info(f"  Text Generation (LLM):  {text_generation_time:6.2f}s")
+                logger.info(f"  Audio Generation (TTS): {audio_generation_time:6.2f}s")
+                logger.info(f"  ────────────────────────────────")
+                logger.info(f"  API Time (Text + Audio): {text_generation_time + audio_generation_time:6.2f}s")
+                logger.info(f"  Total Process Time:      {total_time:6.2f}s")
+                logger.info("=" * 60)
                 
                 # Prevent multiple triggers
                 await asyncio.sleep(3)
