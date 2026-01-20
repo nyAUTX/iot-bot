@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 MOOD_PROMPTS = {
-    "happy": "Gib mir ein kurzes, freundliches und kreatives Mode-Kompliment zu dem Outfit auf dem Bild. Ein einziger, charmanter Satz genügt. Sei dabei so freundlich und entzückend wie möglich gegenüber dem Kleidungsstil, nach dem Motto: 'Das ist das stilvollste, was ich je gesehen habe'.",
+    "happy": "Gib mir ein kurzes, freundliches und kreatives Mode-Kompliment zu dem oder den Outfits auf dem Bild. Ein einziger, charmanter Satz genügt. Sei dabei so freundlich und entzückend wie möglich gegenüber dem Kleidungsstil, nach dem Motto: 'Das ist das stilvollste, was ich je gesehen habe'.",
     
     "flirty": "Gib mir einen kurzen, charmant-flirtenden Kommentar zu dem Outfit auf dem Bild. Ein einziger, verspielter Satz genügt. Sei dabei so flirtend und verführerisch wie möglich, nach dem Motto: 'Wow, in diesem Outfit siehst du einfach umwerfend aus'.",
     
@@ -57,6 +57,7 @@ class ImageAnalyzer:
             
             response = client.chat.completions.create(
                 model="gpt-4.1-nano",
+                instructions="Talk like a pirate",
                 messages=[
                     {
                         "role": "user",
