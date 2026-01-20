@@ -82,13 +82,15 @@ class SensorController:
             time.sleep(0.00001)
             GPIO.output(self.TRIG, False)
             
-            # Wait for ECHO to go high
-            timeout = time.time() + 0.1
+            # Wait for ECHO to go high (reduced timeout for faster response)
+            timeout = time.time() + 0.05  # 50ms instead of 100ms
+            pulse_start = time.time()
             while GPIO.input(self.ECHO) == 0 and time.time() < timeout:
                 pulse_start = time.time()
             
-            # Wait for ECHO to go low
-            timeout = time.time() + 0.1
+            # Wait for ECHO to go low (reduced timeout)
+            timeout = time.time() + 0.05  # 50ms instead of 100ms
+            pulse_end = time.time()
             while GPIO.input(self.ECHO) == 1 and time.time() < timeout:
                 pulse_end = time.time()
             

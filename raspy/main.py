@@ -78,17 +78,21 @@ async def sensor_loop():
 
             # Trigger when sensor is covered (< 5 cm)
             if distance < 5:
+                start_time = datetime.now()
                 logger.info("Sensor covered! Triggering photo capture...")
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 
-                # Warning LED sequence
+                # Warning LED sequence (runs in sync - 5 seconds)
+                led_start = datetime.now()
                 sensor_controller.warning_sequence()
+                logger.debug(f"LED sequence took: {(datetime.now() - led_start).total_seconds():.2f}s")
                 
                 # Take photo
+                photo_start = datetime.now()
                 photo_path = sensor_controller.take_photo(timestamp)
-                logger.info(f"Photo captured: {photo_path}")
+                logger.info(f"Photo captured in {(datetime.now() - photo_start).total_seconds():.2f}s: {photo_path}")
                 
-                # Archive existing photo if it exists
+                # Archive existing photo if it exists (async file operation)
                 if Path("photo.jpg").exists():
                     archiver.archive_file("photo.jpg", "photos/archive")
                 
@@ -97,30 +101,45 @@ async def sensor_loop():
                 shutil.move(photo_path, "photo.jpg")
                 logger.info("Photo saved as photo.jpg")
                 
-                # Analyze image with LLM
+                # Get mood once
                 mood = get_mood()
-                logger.info(f"Analyzing image with mood: {mood}")
+                
+                # Analyze image with LLM (this is the slowest part - 2-5 seconds)
+                llm_start = datetime.now()
+                logger.info(f"Analyzing image with mood: {mood}...")
                 response_text = image_analyzer.analyze_image("photo.jpg", mood)
-                logger.info(f"LLM Response: {response_text}")
+                logger.info(f"LLM analysis took {(datetime.now() - llm_start).total_seconds():.2f}s")
+                logger.info(f"Response: {response_text}")
                 
-                # Generate and play audio
+                # Generate audio (also slow - 3-10 seconds via Replicate API)
+                audio_start = datetime.now()
+                logger.info(f"Generating audio...")
                 audio_path = audio_handler.generate_audio(response_text, mood, timestamp)
-                logger.info(f"Audio generated: {audio_path}")
                 
-                # Archive existing audio if it exists
-                if Path("audio.mp3").exists():
-                    archiver.archive_file("audio.mp3", "audio/archive")
+                if audio_path:
+                    logger.info(f"Audio generation took {(datetime.now() - audio_start).total_seconds():.2f}s")
+                    
+                    # Archive existing audio if it exists
+                    if Path("audio.mp3").exists():
+                        archiver.archive_file("audio.mp3", "audio/archive")
+                    
+                    # Move to audio.mp3 and play
+                    shutil.move(audio_path, "audio.mp3")
+                    
+                    play_start = datetime.now()
+                    audio_handler.play_audio("audio.mp3")
+                    logger.info(f"Audio playback took {(datetime.now() - play_start).total_seconds():.2f}s")
+                else:
+                    logger.error("Audio generation failed")
                 
-                # Move to audio.mp3 and play
-                import shutil
-                shutil.move(audio_path, "audio.mp3")
-                audio_handler.play_audio("audio.mp3")
-                logger.info("Audio played")
+                total_time = (datetime.now() - start_time).total_seconds()
+                logger.info(f"✓ Total process time: {total_time:.2f}s")
                 
                 # Prevent multiple triggers
                 await asyncio.sleep(3)
+                await asyncio.sleep(3)
 
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.1)  # Faster polling: 100ms instead of 200ms
 
     except KeyboardInterrupt:
         logger.info("Sensor loop interrupted")
@@ -150,7 +169,7 @@ async def mood_watcher_loop():
             except Exception as e:
                 logger.error(f"Error in mood watcher: {e}")
             
-            await asyncio.sleep(0.5)  # Check every 500ms
+            await asyncio.sleep(0.2)  # Faster mood checking: 200ms instead of 500ms
             
     except Exception as e:
         logger.error(f"Error in mood watcher loop: {e}", exc_info=True)
