@@ -1,11 +1,10 @@
 import asyncio
 import os
+import logging
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
-import logging
 
 # Import modules
 from bot import start_telegram_bot
@@ -39,13 +38,13 @@ def set_mood(new_mood):
             # Send mood over serial
             serial_handler.send_mood(current_mood)
             return True
-    return False
+        return False
 
 
 def get_mood():
     """Get the current mood safely."""
-    with mood_lock:
-        return current_mood
+    # For simple reads we can return without lock; mood changes are infrequent
+    return current_mood
 
 
 def initialize_directories():
@@ -106,7 +105,7 @@ async def sensor_loop():
                 logger.info("Audio played")
                 
                 # Prevent multiple triggers
-                time.sleep(3)
+                await asyncio.sleep(3)
 
             await asyncio.sleep(0.2)
 
@@ -143,11 +142,12 @@ async def main():
     # Start components
     logger.info("Initializing components...")
     
-    # Start Telegram bot in a separate thread
-    bot_thread = threading.Thread(target=lambda: asyncio.run(start_telegram_bot(set_mood)), daemon=True)
-    bot_thread.start()
-    logger.info("Telegram bot started")
-    time.sleep(2)  # Give bot time to initialize
+    # Start Telegram bot in the same event loop
+    bot_app = await start_telegram_bot(set_mood)
+    if bot_app is None:
+        logger.error("Bot konnte nicht gestartet werden")
+    else:
+        logger.info("Telegram bot started")
     
     # Run async loops
     try:
@@ -162,6 +162,14 @@ async def main():
     finally:
         logger.info("ANDI System shutting down...")
         sensor_controller.cleanup()
+        # Stop bot cleanly
+        try:
+            if 'bot_app' in locals() and bot_app:
+                await bot_app.updater.stop()
+                await bot_app.stop()
+                await bot_app.shutdown()
+        except Exception as e:
+            logger.error(f"Error shutting down bot: {e}", exc_info=True)
 
 
 if __name__ == "__main__":

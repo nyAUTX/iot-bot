@@ -75,18 +75,20 @@ async def start_telegram_bot(callback):
     
     if not BOT_TOKEN:
         logger.error("TELEGRAM_TOKEN fehlt in der .env – Bot kann nicht gestartet werden")
-        return
+        return None
 
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("ANDI Bot is running... starting polling (no signal handlers)")
-    # In Thread: disable signal handlers to avoid set_wakeup_fd errors
-    await application.run_polling(
-        drop_pending_updates=True,
-        stop_signals=None  # don't register signal handlers in non-main thread
-    )
+    logger.info("ANDI Bot is running... starting polling")
+    # Für eingebettete Nutzung im bestehenden Event-Loop: manuell initialisieren/starten/pollen
+    await application.initialize()
+    # Drop alte Updates, falls vorhanden
+    await application.bot.delete_webhook(drop_pending_updates=True)
+    await application.start()
+    await application.updater.start_polling()
+    return application
 
 
 if __name__ == "__main__":
