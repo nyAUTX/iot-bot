@@ -57,8 +57,11 @@ class ImageAnalyzer:
             
             response = client.chat.completions.create(
                 model="gpt-4.1-nano",
-                instructions="Talk like a pirate",
                 messages=[
+                    {
+            "role": "developer",
+            "content": "Sprich wie ein übertrieben homosexueller affektierter Modeschöpfer aus Paris"
+        },
                     {
                         "role": "user",
                         "content": [
