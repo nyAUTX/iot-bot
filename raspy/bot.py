@@ -82,13 +82,8 @@ async def start_telegram_bot(callback):
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("ANDI Bot is running... starting polling")
-    await application.initialize()
-    # Delete webhook to make polling work and drop old pending updates
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.start()
-    await application.updater.start_polling()
-    # Keep the bot alive to receive updates
-    await application.updater.idle()
+    # run_polling (PTB 20+) übernimmt init/start/poll/idle/stop
+    await application.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
